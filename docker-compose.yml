@@ -1,0 +1,20 @@
+version: '3.7'
+
+services:
+  redis:
+    image: redis:alpine
+    container_name: omg_redis
+    restart: always
+
+  nextcloud:
+    build: 
+      context: ../
+      dockerfile: ./Dockerfile
+    container_name: omg_tgbot
+    restart: always
+    depends_on:
+      - redis
+    links:
+      - redis
+    ports:
+      - 127.0.0.1:10425:80
