@@ -200,12 +200,12 @@ public class UpdateHandlers
     {
         public const string Usage = "欢迎使用GPA机器人，它可以：\n\n" +
                                     "/once - 通过浙大钉API查询一次成绩\n" +
-                                    "/sub - 订阅成绩变动，服务器将每10分钟查询一次成绩\n" +
+                                    "/sub - 订阅成绩变动，服务器将每15分钟查询一次成绩\n" +
                                     "/unsub - 取消订阅\n" +
                                     "\n机器人可通过两种方式登录教务网：\n" +
                                     "1. 学号 + 统一身份认证密码\n" +
                                     "2. Cookies\n" +
-                                    "\n一次查询模式下，机器人不会记录任何数据。订阅模式夏，机器人不会记录您的学号和密码，但是会记录Cookies，以供定时查询。当Cookie失效时，机器人将通知您。";
+                                    "\n一次查询模式下，机器人不会记录任何数据。订阅模式下，机器人不会记录您的学号和密码，但是会记录Cookies，以供定时查询。当Cookie失效时，机器人将通知您。";
         public const string VerifyMethodUsage = "请选择身份验证方式：\n" +
                                                 "/zjuam 统一身份认证账号和密码\n" +
                                                 "/cookie 名为iPlanetDirectoryPro的Cookie";

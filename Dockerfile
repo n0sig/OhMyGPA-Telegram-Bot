@@ -4,10 +4,9 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
-COPY ["OhMyGPA Telegram Bot/OhMyGPA Telegram Bot.csproj", "OhMyGPA Telegram Bot/"]
-RUN dotnet restore "OhMyGPA Telegram Bot/OhMyGPA Telegram Bot.csproj"
+COPY ["./OhMyGPA Telegram Bot.csproj", "./"]
+RUN dotnet restore "OhMyGPA Telegram Bot.csproj"
 COPY . .
-WORKDIR "/src/OhMyGPA Telegram Bot"
 RUN dotnet build "OhMyGPA Telegram Bot.csproj" -c Release -o /app/build
 
 FROM build AS publish

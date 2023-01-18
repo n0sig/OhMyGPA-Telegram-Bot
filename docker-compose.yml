@@ -8,8 +8,7 @@ services:
 
   nextcloud:
     build: 
-      context: ../
-      dockerfile: ./Dockerfile
+      context: ./
     container_name: omg_tgbot
     restart: always
     depends_on:
