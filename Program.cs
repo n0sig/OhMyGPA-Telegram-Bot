@@ -1,8 +1,9 @@
-using StackExchange.Redis;
-using Telegram.Bot;
+using Microsoft.Extensions.Options;
 using OhMyGPA.Telegram.Bot.Controllers;
 using OhMyGPA.Telegram.Bot.Logics;
 using OhMyGPA.Telegram.Bot.Models;
+using StackExchange.Redis;
+using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,23 +12,14 @@ var botConfigurationSection = builder.Configuration.GetSection(BotConfiguration.
 builder.Services.Configure<BotConfiguration>(botConfigurationSection);
 var botConfiguration = botConfigurationSection.Get<BotConfiguration>();
 builder.Services.AddHttpClient("telegram_bot_client")
-                .AddTypedClient<ITelegramBotClient>((httpClient, sp) =>
-                {
-                    var botConfig = sp.GetConfiguration<BotConfiguration>();
-                    TelegramBotClientOptions options = new(botConfig.BotToken);
-                    return new TelegramBotClient(options, httpClient);
-                });
+    .AddTypedClient<ITelegramBotClient>((httpClient, sp) =>
+    {
+        var botConfig = sp.GetConfiguration<BotConfiguration>();
+        TelegramBotClientOptions options = new(botConfig.BotToken);
+        return new TelegramBotClient(options, httpClient);
+    });
 
 // Redis Service
-//var redisConfigurationSection =builder.Configuration.GetSection(RedisConfiguration.Configuration);
-//var redisConfiguration = redisConfigurationSection.Get<RedisConfiguration>();
-/*(builder.Services.AddStackExchangeRedisCache(options =>
-{
-    options.ConfigurationOptions = new ConfigurationOptions();
-    options.ConfigurationOptions.EndPoints.Add(redisConfiguration.Host, redisConfiguration.Port);
-    options.ConfigurationOptions.Password = redisConfiguration.Password;
-    options.ConfigurationOptions.DefaultDatabase = redisConfiguration.DefaultDatabase;
-});*/
 var redisConfigurationSection = builder.Configuration.GetSection(RedisConfiguration.Configuration);
 builder.Services.Configure<RedisConfiguration>(redisConfigurationSection);
 builder.Services.AddSingleton<IDatabaseAsync>(sp =>
@@ -59,7 +51,7 @@ builder.Services.AddControllers().AddNewtonsoftJson();
 
 var app = builder.Build();
 
-app.MapBotWebhookRoute<BotController>(route: botConfiguration.Route);
+app.MapBotWebhookRoute<BotController>(botConfiguration.Route);
 
 app.MapControllers();
 
@@ -77,9 +69,9 @@ public class RedisConfiguration
 {
     public static readonly string Configuration = "RedisConfiguration";
     public string Host { get; init; } = default!;
-    public int Port { get; init; } = default!;
-    public string? Password { get; init; } = default!;
-    public int DefaultDatabase { get; init; } = default!;
+    public int Port { get; init; }
+    public string? Password { get; init; }
+    public int DefaultDatabase { get; init; }
 }
 
 public class AesConfiguration
@@ -87,4 +79,30 @@ public class AesConfiguration
     public static readonly string Configuration = "AesConfiguration";
     public string Key { get; init; } = default!;
     public string IV { get; init; } = default!;
+}
+
+public static class Extensions
+{
+    public static T GetConfiguration<T>(this IServiceProvider serviceProvider)
+        where T : class
+    {
+        var o = serviceProvider.GetService<IOptions<T>>();
+        if (o is null)
+            throw new ArgumentNullException(nameof(T));
+
+        return o.Value;
+    }
+    
+    public static ControllerActionEndpointConventionBuilder MapBotWebhookRoute<T>(
+        this IEndpointRouteBuilder endpoints,
+        string route)
+    {
+        var controllerName = typeof(T).Name.Replace("Controller", "");
+        var actionName = typeof(T).GetMethods()[0].Name;
+
+        return endpoints.MapControllerRoute(
+            name: "bot_webhook",
+            pattern: route,
+            defaults: new { controller = controllerName, action = actionName });
+    }
 }

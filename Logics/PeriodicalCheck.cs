@@ -1,18 +1,18 @@
-﻿using System.Security.Cryptography;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using OhMyGPA.Telegram.Bot.Models;
 using Telegram.Bot;
+using ZjuApi;
 
 namespace OhMyGPA.Telegram.Bot.Logics;
 
 public class PeriodicalCheck : IHostedService, IDisposable
 {
-    private readonly ILogger<PeriodicalCheck> _logger;
-    private readonly BotUser _users;
     private readonly AesCrypto _aes;
     private readonly ITelegramBotClient _botClient;
-    private Timer? _timer;
+    private readonly ILogger<PeriodicalCheck> _logger;
+    private readonly BotUser _users;
     private CancellationToken _cancellationToken;
+    private Timer? _timer;
 
     public PeriodicalCheck(ILogger<PeriodicalCheck> logger, BotUser users, AesCrypto aes, ITelegramBotClient botClient)
     {
@@ -20,6 +20,11 @@ public class PeriodicalCheck : IHostedService, IDisposable
         _users = users;
         _aes = aes;
         _botClient = botClient;
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -39,16 +44,11 @@ public class PeriodicalCheck : IHostedService, IDisposable
         return Task.CompletedTask;
     }
 
-    public void Dispose()
-    {
-        _timer?.Dispose();
-    }
-
     private async void DoCheck(object? state)
     {
         _logger.LogInformation(
             "Doing periodical check");
-        
+
         var toUpdateUsers = new Dictionary<string, byte[]>();
         var toDeleteUsers = new List<string>();
 
@@ -62,17 +62,18 @@ public class PeriodicalCheck : IHostedService, IDisposable
                 toDeleteUsers.Add(userEncrypted.Key);
                 continue;
             }
+
             try
             {
-                var transcriptStr = await ZjuApi.Cjcx.GetTranscript(user.Cookie);
+                var transcriptStr = await Cjcx.GetTranscript(user.Cookie);
                 var transcript = new Transcript(transcriptStr);
                 if (transcript.CourseCount != user.LastQueryCourseCount)
                 {
                     user.LastQueryCourseCount = transcript.CourseCount;
                     toUpdateUsers.Add(userEncrypted.Key, _aes.Encrypt(JsonConvert.SerializeObject(user)));
                     await _botClient.SendTextMessageAsync(
-                        chatId: user.ChatId,
-                        text: "成绩变动通知：\n" + transcript,
+                        user.ChatId,
+                        "成绩变动通知：\n" + transcript,
                         cancellationToken: _cancellationToken);
                 }
             }
@@ -81,21 +82,15 @@ public class PeriodicalCheck : IHostedService, IDisposable
                 _logger.LogWarning(e, "Error when checking user {0}", user.ChatId);
                 toDeleteUsers.Add(userEncrypted.Key);
                 await _botClient.SendTextMessageAsync(
-                    chatId: user.ChatId,
-                    text: "查询失败，已为您取消订阅\n错误信息：\n" + e.Message,
+                    user.ChatId,
+                    "查询失败，已为您取消订阅\n错误信息：\n" + e.Message,
                     cancellationToken: _cancellationToken);
             }
         }
-        
-        foreach (var user in toUpdateUsers)
-        {
-            await _users.UpdateSubscribeUser(user.Key, user.Value, _cancellationToken);
-        }
 
-        foreach (var user in toDeleteUsers)
-        {
-            await _users.RemoveSubscribeUser(user, _cancellationToken);
-        }
+        foreach (var user in toUpdateUsers) await _users.UpdateSubscribeUser(user.Key, user.Value, _cancellationToken);
+
+        foreach (var user in toDeleteUsers) await _users.RemoveSubscribeUser(user, _cancellationToken);
 
         _logger.LogInformation("Periodical check completed");
     }

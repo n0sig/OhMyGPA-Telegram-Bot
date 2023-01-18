@@ -7,7 +7,7 @@ services:
     restart: always
 
   nextcloud:
-    build: 
+    build:
       context: ./
     container_name: omg_tgbot
     restart: always

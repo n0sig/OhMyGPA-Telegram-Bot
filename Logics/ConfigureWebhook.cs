@@ -6,9 +6,9 @@ namespace OhMyGPA.Telegram.Bot.Logics;
 
 public class ConfigureWebhook : IHostedService
 {
+    private readonly BotConfiguration _botConfig;
     private readonly ILogger<ConfigureWebhook> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly BotConfiguration _botConfig;
 
     public ConfigureWebhook(
         ILogger<ConfigureWebhook> logger,
@@ -33,7 +33,7 @@ public class ConfigureWebhook : IHostedService
         var webhookAddress = $"{_botConfig.HostAddress}{_botConfig.Route}";
         _logger.LogInformation("Setting webhook: {WebhookAddress}", webhookAddress);
         await botClient.SetWebhookAsync(
-            url: webhookAddress,
+            webhookAddress,
             allowedUpdates: Array.Empty<UpdateType>(),
             cancellationToken: cancellationToken);
     }

@@ -8,8 +8,8 @@ public class Cjcx
     //页面和API的URI
     private static readonly Uri PageUri = new("https://appservice.zju.edu.cn/zdjw/cjcx/cjcxjg");
     private static readonly Uri ApiUri = new("https://appservice.zju.edu.cn/zju-smartcampus/zdydjw/api/kkqk_cxXscjxx");
-    
-    
+
+
     /*
      * 使用Cookies(iPlanetDirectoryPro)来获取成绩
      * @param wisportalId 登录后的Cookie
@@ -22,7 +22,7 @@ public class Cjcx
         cookieContainer.Add(new Cookie("iPlanetDirectoryPro", iPlanetDirectoryPro, "/", "zju.edu.cn"));
         var handler = new HttpClientHandler
         {
-            CookieContainer = cookieContainer,
+            CookieContainer = cookieContainer
         };
         var httpClient = new HttpClient(handler);
         httpClient.DefaultRequestHeaders.Add("User-Agent",
@@ -43,6 +43,7 @@ public class Cjcx
         {
             throw new Exception("访问成绩查询页面失败，可能是服务器故障");
         }
+
         try
         {
             var response = await httpClient.PostAsync(ApiUri, null);
@@ -57,8 +58,8 @@ public class Cjcx
             throw new Exception("获取成绩单失败，可能是Cookie过期");
         }
     }
-    
-    
+
+
     /*
      * 使用统一身份认证来获取成绩
      * @param username 学号
@@ -70,5 +71,4 @@ public class Cjcx
         var iPlanetDirectoryPro = await ZjuAm.GetCookie(username, password);
         return await GetTranscript(iPlanetDirectoryPro);
     }
-    
 }

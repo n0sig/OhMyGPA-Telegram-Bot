@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Numerics;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -30,10 +31,7 @@ public class ZjuAm
                     "name=\"execution\" value=\"(.*?)\"")
                 .Groups[1]
                 .Value;
-            if (execution == "")
-            {
-                throw new Exception("解析统一身份认证页面失败");
-            }
+            if (execution == "") throw new Exception("解析统一身份认证页面失败");
         }
 
         //密钥从服务器获取，对密码进行RSA加密
@@ -43,7 +41,7 @@ public class ZjuAm
             try
             {
                 var key = JsonSerializer.Deserialize<Dictionary<string, string>>(
-                    await response.Content.ReadAsStringAsync());
+                    await response.Content.ReadAsStringAsync()) ?? new Dictionary<string, string>();
                 e = key["exponent"];
                 m = key["modulus"];
             }
@@ -55,12 +53,12 @@ public class ZjuAm
             var rsaEncrypt = (string password, string exponent, string modulus) =>
             {
                 //字符串转换为BigInteger
-                var pwdInt = new BigInteger(System.Text.Encoding.UTF8.GetBytes(password), isBigEndian: true);
-                var modInt = new BigInteger(Convert.FromHexString(modulus), isUnsigned: true, isBigEndian: true);
+                var pwdInt = new BigInteger(Encoding.UTF8.GetBytes(password), isBigEndian: true);
+                var modInt = new BigInteger(Convert.FromHexString(modulus), true, true);
                 var expInt = Convert.ToUInt64(exponent, 16);
                 //由于采用No Padding，直接幂次取余后，转换为Hex即可得到密文（大小写不敏感）
                 var pwdEncInt = BigInteger.ModPow(pwdInt, expInt, modInt);
-                return Convert.ToHexString(pwdEncInt.ToByteArray(isUnsigned: true, isBigEndian: true));
+                return Convert.ToHexString(pwdEncInt.ToByteArray(true, true));
             };
 
             encryptedPassword = rsaEncrypt(password, e, m);
@@ -77,13 +75,10 @@ public class ZjuAm
                        { "rememberMe", "true" }
                    })))
         {
-            if ((await response.Content.ReadAsStringAsync()).Contains("统一身份认证"))
-            {
-                throw new Exception("账号或密码错误");
-            }
+            if ((await response.Content.ReadAsStringAsync()).Contains("统一身份认证")) throw new Exception("账号或密码错误");
         }
     }
-    
+
     /*
      * 使用统一身份认证来获取Cookies(名称为iPlanetDirectoryPro)
      * @param username 学号
@@ -95,10 +90,10 @@ public class ZjuAm
         var cookieContainer = new CookieContainer();
         var handler = new HttpClientHandler
         {
-            CookieContainer = cookieContainer,
+            CookieContainer = cookieContainer
         };
         var httpClient = new HttpClient(handler);
-        
+
         // 进行统一身份认证，并获取Cookie iPlanetDirectoryPro
         try
         {
@@ -108,7 +103,7 @@ public class ZjuAm
                 throw new Exception("无法获取Cookie iPlanetDirectoryPro");
             return iPlanetDirectoryPro.Value;
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new Exception("登录统一身份认证失败，" + e.Message);
         }

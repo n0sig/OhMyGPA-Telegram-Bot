@@ -22,9 +22,9 @@ public enum RcvMsgType
 
 public class AesCrypto
 {
-    private readonly ICryptoTransform _encryptor;
     private readonly ICryptoTransform _decryptor;
-    
+    private readonly ICryptoTransform _encryptor;
+
     public AesCrypto(string key, string iv)
     {
         var aes = Aes.Create();
@@ -33,12 +33,12 @@ public class AesCrypto
         _encryptor = aes.CreateEncryptor();
         _decryptor = aes.CreateDecryptor();
     }
-    
+
     public byte[] Encrypt(string plainText)
     {
         return _encryptor.TransformFinalBlock(Encoding.UTF8.GetBytes(plainText), 0, plainText.Length);
     }
-    
+
     public string Decrypt(byte[]? cipherText)
     {
         if (cipherText == null)
@@ -50,9 +50,9 @@ public class AesCrypto
 
 public class BotUser
 {
-    private readonly ILogger<BotUser> _logger;
-    private readonly IDatabaseAsync _db;
     private readonly AesCrypto _aes;
+    private readonly IDatabaseAsync _db;
+    private readonly ILogger<BotUser> _logger;
     private readonly Dictionary<string, byte[]> _subscribeUsers;
 
     public BotUser(IDatabaseAsync db, AesCrypto aes, ILogger<BotUser> logger)
@@ -63,28 +63,6 @@ public class BotUser
         var userListString = _aes.Decrypt(_db.StringGetAsync("subscribes").Result);
         _subscribeUsers = JsonConvert.DeserializeObject<Dictionary<string, byte[]>>(userListString) ??
                           new Dictionary<string, byte[]>();
-    }
-
-    public class DialogUser
-    {
-        // Bot command
-        public CmdType CmdType;
-        public RcvMsgType RcvMsgType;
-
-        public DialogUser()
-        {
-            CmdType = CmdType.None;
-            RcvMsgType = RcvMsgType.Normal;
-        }
-
-        public string? CachedUsername;
-    }
-
-    public class SubscribeUser
-    {
-        public long ChatId;
-        public string Cookie = "";
-        public int LastQueryCourseCount = 0;
     }
 
     public async Task<DialogUser> GetDialogUser(long chatId,
@@ -133,10 +111,11 @@ public class BotUser
         {
             hasSubscription = false;
         }
+
         await _db.StringSetAsync("subscribes", _aes.Encrypt(JsonConvert.SerializeObject(_subscribeUsers)));
         return hasSubscription;
     }
-    
+
     public async Task<bool> RemoveSubscribeUser(string chatIdHash,
         CancellationToken cancellationToken)
     {
@@ -150,10 +129,11 @@ public class BotUser
         {
             hasSubscription = false;
         }
+
         await _db.StringSetAsync("subscribes", _aes.Encrypt(JsonConvert.SerializeObject(_subscribeUsers)));
         return hasSubscription;
     }
-    
+
     public async Task UpdateSubscribeUser(string key, byte[] value,
         CancellationToken cancellationToken)
     {
@@ -161,33 +141,49 @@ public class BotUser
         _subscribeUsers.Add(key, value);
         await _db.StringSetAsync("subscribes", _aes.Encrypt(JsonConvert.SerializeObject(_subscribeUsers)));
     }
-    
+
     public SubscribeUser GetSubscribeUser(long chatId,
         CancellationToken cancellationToken)
     {
         var chatIdHash = Convert.ToHexString(SHA512.HashData(Encoding.UTF8.GetBytes(chatId.ToString())));
         if (_subscribeUsers.ContainsKey(chatIdHash))
-        {
             return JsonConvert.DeserializeObject<SubscribeUser>(_aes.Decrypt(_subscribeUsers[chatIdHash])) ??
                    new SubscribeUser();
-        }
-        else
-        {
-            return new SubscribeUser();
-        }
+        return new SubscribeUser();
     }
-    
+
     public bool IsSubscribeUser(long chatId,
         CancellationToken cancellationToken)
     {
         var chatIdHash = Convert.ToHexString(SHA512.HashData(Encoding.UTF8.GetBytes(chatId.ToString())));
         return _subscribeUsers.ContainsKey(chatIdHash);
     }
-    
+
     public Dictionary<string, byte[]> GetAllSubscribeUsers(
         CancellationToken cancellationToken)
     {
         return _subscribeUsers;
     }
-    
+
+    public class DialogUser
+    {
+        public string? CachedUsername;
+
+        // Bot command
+        public CmdType CmdType;
+        public RcvMsgType RcvMsgType;
+
+        public DialogUser()
+        {
+            CmdType = CmdType.None;
+            RcvMsgType = RcvMsgType.Normal;
+        }
+    }
+
+    public class SubscribeUser
+    {
+        public long ChatId;
+        public string Cookie = "";
+        public int LastQueryCourseCount = 0;
+    }
 }

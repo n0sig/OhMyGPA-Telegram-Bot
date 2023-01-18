@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Telegram.Bot.Types;
 using OhMyGPA.Telegram.Bot.Logics;
+using Telegram.Bot.Types;
 
 namespace OhMyGPA.Telegram.Bot.Controllers;
 

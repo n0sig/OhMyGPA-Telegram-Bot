@@ -1,8 +1,9 @@
+using OhMyGPA.Telegram.Bot.Models;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
-using OhMyGPA.Telegram.Bot.Models;
+using ZjuApi;
 
 namespace OhMyGPA.Telegram.Bot.Logics;
 
@@ -49,7 +50,7 @@ public class UpdateHandlers
                     await SendMessage(_botClient, message, cancellationToken, Reply.SubscribeQuerying);
                     try
                     {
-                        var cjcxJson = await ZjuApi.Cjcx.GetTranscript(subscribeUser.Cookie);
+                        var cjcxJson = await Cjcx.GetTranscript(subscribeUser.Cookie);
                         var transcript = new Transcript(cjcxJson);
                         await SendMessage(_botClient, message, cancellationToken, Reply.QuerySuccess + transcript);
                         subscribeUser.LastQueryCourseCount = transcript.CourseCount;
@@ -59,6 +60,7 @@ public class UpdateHandlers
                     {
                         await SendMessage(_botClient, message, cancellationToken, Reply.QueryFail + e.Message);
                     }
+
                     await _users.RemoveDialogUser(chatId, cancellationToken);
                 }
                 else
@@ -68,6 +70,7 @@ public class UpdateHandlers
                     dialogUser.RcvMsgType = RcvMsgType.Normal;
                     await _users.SaveDialogUser(chatId, dialogUser, cancellationToken);
                 }
+
                 break;
             }
             case (CmdType.None, _, "/sub"):
@@ -81,7 +84,7 @@ public class UpdateHandlers
             case (CmdType.None, _, "/unsub"):
             {
                 await SendMessage(_botClient, message, cancellationToken, "正在取消订阅……");
-                if(await _users.RemoveSubscribeUser(chatId, cancellationToken))
+                if (await _users.RemoveSubscribeUser(chatId, cancellationToken))
                     await SendMessage(_botClient, message, cancellationToken, "取消订阅成功");
                 else
                     await SendMessage(_botClient, message, cancellationToken, "您似乎没有订阅");
@@ -119,14 +122,14 @@ public class UpdateHandlers
                     if (dialogUser.RcvMsgType == RcvMsgType.Password)
                     {
                         if (dialogUser.CachedUsername is null) throw new Exception("用户名为空，可能是数据库故障");
-                        cookie = TrimCookie(await ZjuApi.ZjuAm.GetCookie(dialogUser.CachedUsername, messageText));
+                        cookie = TrimCookie(await ZjuAm.GetCookie(dialogUser.CachedUsername, messageText));
                     }
                     else
                     {
                         cookie = TrimCookie(messageText);
                     }
 
-                    var cjcxJson = await ZjuApi.Cjcx.GetTranscript(cookie);
+                    var cjcxJson = await Cjcx.GetTranscript(cookie);
                     var transcript = new Transcript(cjcxJson);
                     await SendMessage(_botClient, message, cancellationToken, Reply.QuerySuccess + transcript);
                     if (dialogUser.CmdType == CmdType.Subscribe)
@@ -135,7 +138,7 @@ public class UpdateHandlers
                         {
                             ChatId = message.Chat.Id,
                             Cookie = cookie,
-                            LastQueryCourseCount = transcript.CourseCount,
+                            LastQueryCourseCount = transcript.CourseCount
                         }, cancellationToken);
                         await SendMessage(_botClient, message, cancellationToken, Reply.SubSuccess);
                     }
@@ -160,13 +163,13 @@ public class UpdateHandlers
             CancellationToken cancellationToken, string text)
         {
             return await botClient.SendTextMessageAsync(
-                chatId: message.Chat.Id,
-                text: text,
+                message.Chat.Id,
+                text,
                 disableNotification: false,
                 replyMarkup: new ReplyKeyboardRemove(),
                 cancellationToken: cancellationToken);
         }
-        
+
         static string TrimCookie(string cookie)
         {
             cookie = cookie.Trim();
@@ -195,7 +198,7 @@ public class UpdateHandlers
         _logger.LogInformation("HandleError: {ErrorMessage}", errorMessage);
         return Task.CompletedTask;
     }
-    
+
     private static class Reply
     {
         public const string Usage = "欢迎使用GPA机器人，它可以：\n\n" +
@@ -206,13 +209,17 @@ public class UpdateHandlers
                                     "1. 学号 + 统一身份认证密码\n" +
                                     "2. Cookies\n" +
                                     "\n一次查询模式下，机器人不会记录任何数据。订阅模式下，机器人不会记录您的学号和密码，但是会记录Cookies，以供定时查询。当Cookie失效时，机器人将通知您。";
+
         public const string VerifyMethodUsage = "请选择身份验证方式：\n" +
                                                 "/zjuam 统一身份认证账号和密码\n" +
                                                 "/cookie 名为iPlanetDirectoryPro的Cookie";
+
         public const string EnterUsername = "好的，请输入您的学号：";
         public const string EnterPassword = "收到，请继续输入统一身份认证密码：";
+
         public const string EnterCookie = "好的，请输入您的Cookie，其开头包含：" +
                                           "\"iPlanetDirectoryPro=\"，内容不含空格，并以分号结尾：";
+
         public const string Querying = "收到，正在尝试获取成绩……";
         public const string SubscribeQuerying = "您已有订阅，正在尝试获取成绩……";
         public const string QuerySuccess = "统一身份认证成功，您的成绩为：\n";
