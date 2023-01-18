@@ -18,6 +18,7 @@ builder.Services.AddHttpClient("telegram_bot_client")
         TelegramBotClientOptions options = new(botConfig.BotToken);
         return new TelegramBotClient(options, httpClient);
     });
+builder.Services.AddControllers().AddNewtonsoftJson();
 
 // Redis Service
 var redisConfigurationSection = builder.Configuration.GetSection(RedisConfiguration.Configuration);
@@ -41,22 +42,19 @@ builder.Services.AddSingleton(new AesCrypto(aesConfiguration.Key, aesConfigurati
 // User Management
 builder.Services.AddSingleton<BotUser>();
 
+// Logics
 builder.Services.AddScoped<UpdateHandlers>();
-
 builder.Services.AddHostedService<ConfigureWebhook>();
-
 builder.Services.AddHostedService<PeriodicalCheck>();
 
-builder.Services.AddControllers().AddNewtonsoftJson();
-
+// Build and run!
 var app = builder.Build();
-
 app.MapBotWebhookRoute<BotController>(botConfiguration.Route);
-
 app.MapControllers();
-
 app.Run();
 
+
+// I want to do so
 public class BotConfiguration
 {
     public static readonly string Configuration = "BotConfiguration";
