@@ -19,7 +19,7 @@ Ngrok是一个一个内网穿透工具，它会为你分配一个2小时内有�
 你将得到一个域名，如`https://b91b-240e-390-e40-f9b0-2415-2909-6bc1-854e.ap.ngrok.io`。
 
 ### 配置 appsettings.json
-把`BotToken`的值改为你的Toke，把`HostAddress`的值改为你得到的域名即可。如果对加密有要求，可以修改AES的Key和IV值。
+把`BotToken`的值改为你的Token，把`HostAddress`的值改为你得到的域名即可。如果对加密有要求，可以修改AES的Key和IV值。
 
 ### 运行程序
 不出意外的话，程序已经可以运行了。如果运行出错，请确保Redis可以正常访问，并且其中没有名为"subscribes"的键。
