@@ -50,8 +50,7 @@ public class UpdateHandlers
                     await SendMessage(_botClient, message, cancellationToken, Reply.SubscribeQuerying);
                     try
                     {
-                        var cjcxJson = await Cjcx.GetTranscript(subscribeUser.Cookie);
-                        var transcript = new Transcript(cjcxJson);
+                        var transcript = await Cjcx.GetTranscript(subscribeUser.Cookie);
                         await SendMessage(_botClient, message, cancellationToken, Reply.QuerySuccess + transcript);
                         subscribeUser.LastQueryCourseCount = transcript.CourseCount;
                         await _users.AddSubscribeUser(chatId, subscribeUser, cancellationToken);
@@ -128,9 +127,8 @@ public class UpdateHandlers
                     {
                         cookie = TrimCookie(messageText);
                     }
-
-                    var cjcxJson = await Cjcx.GetTranscript(cookie);
-                    var transcript = new Transcript(cjcxJson);
+                    
+                    var transcript = await Cjcx.GetTranscript(cookie);
                     await SendMessage(_botClient, message, cancellationToken, Reply.QuerySuccess + transcript);
                     if (dialogUser.CmdType == CmdType.Subscribe)
                     {

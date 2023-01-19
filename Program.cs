@@ -7,7 +7,7 @@ using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Telegram Bot Service
+// Telegram Bot
 var botConfigurationSection = builder.Configuration.GetSection(BotConfiguration.Configuration);
 builder.Services.Configure<BotConfiguration>(botConfigurationSection);
 var botConfiguration = botConfigurationSection.Get<BotConfiguration>();
@@ -20,7 +20,7 @@ builder.Services.AddHttpClient("telegram_bot_client")
     });
 builder.Services.AddControllers().AddNewtonsoftJson();
 
-// Redis Service
+// Redis
 var redisConfigurationSection = builder.Configuration.GetSection(RedisConfiguration.Configuration);
 builder.Services.Configure<RedisConfiguration>(redisConfigurationSection);
 builder.Services.AddSingleton<IDatabaseAsync>(sp =>
@@ -34,7 +34,7 @@ builder.Services.AddSingleton<IDatabaseAsync>(sp =>
     return redis.GetDatabase();
 });
 
-// AES Crypto Service
+// AES Crypto
 var aesConfigurationSection = builder.Configuration.GetSection(AesConfiguration.Configuration);
 var aesConfiguration = aesConfigurationSection.Get<AesConfiguration>();
 builder.Services.AddSingleton(new AesCrypto(aesConfiguration.Key, aesConfiguration.IV));

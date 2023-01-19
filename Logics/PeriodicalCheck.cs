@@ -1,7 +1,6 @@
 ﻿using Newtonsoft.Json;
 using OhMyGPA.Telegram.Bot.Models;
 using Telegram.Bot;
-using ZjuApi;
 
 namespace OhMyGPA.Telegram.Bot.Logics;
 
@@ -65,8 +64,7 @@ public class PeriodicalCheck : IHostedService, IDisposable
 
             try
             {
-                var transcriptStr = await Cjcx.GetTranscript(user.Cookie);
-                var transcript = new Transcript(transcriptStr);
+                var transcript = await ZjuApi.Cjcx.GetTranscript(user.Cookie);
                 if (transcript.CourseCount != user.LastQueryCourseCount)
                 {
                     user.LastQueryCourseCount = transcript.CourseCount;
