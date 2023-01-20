@@ -6,14 +6,14 @@ namespace OhMyGPA.Telegram.Bot.Logics;
 
 public class PeriodicalCheck : IHostedService, IDisposable
 {
-    private readonly AesCrypto _aes;
+    private readonly AesEncryption _aes;
     private readonly ITelegramBotClient _botClient;
     private readonly ILogger<PeriodicalCheck> _logger;
     private readonly BotUser _users;
     private CancellationToken _cancellationToken;
     private Timer? _timer;
 
-    public PeriodicalCheck(ILogger<PeriodicalCheck> logger, BotUser users, AesCrypto aes, ITelegramBotClient botClient)
+    public PeriodicalCheck(ILogger<PeriodicalCheck> logger, BotUser users, AesEncryption aes, ITelegramBotClient botClient)
     {
         _logger = logger;
         _users = users;
@@ -31,7 +31,7 @@ public class PeriodicalCheck : IHostedService, IDisposable
         _logger.LogInformation("Periodical check service started");
         _cancellationToken = cancellationToken;
         _timer = new Timer(DoCheck, null, TimeSpan.Zero,
-            TimeSpan.FromMinutes(15));
+            TimeSpan.FromMinutes(5));
         return Task.CompletedTask;
     }
 

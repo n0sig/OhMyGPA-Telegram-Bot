@@ -34,10 +34,14 @@ builder.Services.AddSingleton<IDatabaseAsync>(sp =>
     return redis.GetDatabase();
 });
 
-// AES Crypto
-var aesConfigurationSection = builder.Configuration.GetSection(AesConfiguration.Configuration);
-var aesConfiguration = aesConfigurationSection.Get<AesConfiguration>();
-builder.Services.AddSingleton(new AesCrypto(aesConfiguration.Key, aesConfiguration.IV));
+// AES Encryption
+var cryptoConfigurationSection = builder.Configuration.GetSection(EncryptionConfiguration.Configuration);
+builder.Services.Configure<EncryptionConfiguration>(cryptoConfigurationSection);
+builder.Services.AddSingleton<AesEncryption>(sp =>
+{
+    var cryptoConfig = sp.GetConfiguration<EncryptionConfiguration>();
+    return new AesEncryption(cryptoConfig.Key, cryptoConfig.IV);
+});
 
 // User Management
 builder.Services.AddSingleton<BotUser>();
@@ -57,7 +61,7 @@ app.Run();
 // I want to do so
 public class BotConfiguration
 {
-    public static readonly string Configuration = "BotConfiguration";
+    public static readonly string Configuration = "Bot";
     public string BotToken { get; init; } = default!;
     public string HostAddress { get; init; } = default!;
     public string Route { get; init; } = default!;
@@ -65,16 +69,16 @@ public class BotConfiguration
 
 public class RedisConfiguration
 {
-    public static readonly string Configuration = "RedisConfiguration";
+    public static readonly string Configuration = "Redis";
     public string Host { get; init; } = default!;
     public int Port { get; init; }
     public string? Password { get; init; }
     public int DefaultDatabase { get; init; }
 }
 
-public class AesConfiguration
+public class EncryptionConfiguration
 {
-    public static readonly string Configuration = "AesConfiguration";
+    public static readonly string Configuration = "Encryption";
     public string Key { get; init; } = default!;
     public string IV { get; init; } = default!;
 }

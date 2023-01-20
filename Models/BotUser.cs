@@ -22,12 +22,12 @@ public enum RcvMsgType
 
 public class BotUser
 {
-    private readonly AesCrypto _aes;
+    private readonly AesEncryption _aes;
     private readonly IDatabaseAsync _db;
     private readonly ILogger<BotUser> _logger;
     private readonly Dictionary<string, byte[]> _subscribeUsers;
 
-    public BotUser(IDatabaseAsync db, AesCrypto aes, ILogger<BotUser> logger)
+    public BotUser(IDatabaseAsync db, AesEncryption aes, ILogger<BotUser> logger)
     {
         _db = db;
         _aes = aes;

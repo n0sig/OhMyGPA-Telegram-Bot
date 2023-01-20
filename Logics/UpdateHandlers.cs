@@ -64,7 +64,7 @@ public class UpdateHandlers
                 }
                 else
                 {
-                    await SendMessage(_botClient, message, cancellationToken, Reply.VerifyMethodUsage);
+                    await SendMessage(_botClient, message, cancellationToken, Reply.VerifyMethodSelect);
                     dialogUser.CmdType = CmdType.Query;
                     dialogUser.RcvMsgType = RcvMsgType.Normal;
                     await _users.SaveDialogUser(chatId, dialogUser, cancellationToken);
@@ -74,7 +74,7 @@ public class UpdateHandlers
             }
             case (CmdType.None, _, "/sub"):
             {
-                await SendMessage(_botClient, message, cancellationToken, Reply.VerifyMethodUsage);
+                await SendMessage(_botClient, message, cancellationToken, Reply.VerifyMethodSelect);
                 dialogUser.CmdType = CmdType.Subscribe;
                 dialogUser.RcvMsgType = RcvMsgType.Normal;
                 await _users.SaveDialogUser(chatId, dialogUser, cancellationToken);
@@ -138,7 +138,7 @@ public class UpdateHandlers
                             Cookie = cookie,
                             LastQueryCourseCount = transcript.CourseCount
                         }, cancellationToken);
-                        await SendMessage(_botClient, message, cancellationToken, Reply.SubSuccess);
+                        await SendMessage(_botClient, message, cancellationToken, Reply.SubscribeSuccess);
                     }
                 }
                 catch (Exception e)
@@ -199,29 +199,27 @@ public class UpdateHandlers
 
     private static class Reply
     {
-        public const string Usage = "欢迎使用GPA机器人，它可以：\n\n" +
-                                    "/once - 通过浙大钉API查询一次成绩\n" +
-                                    "/sub - 订阅成绩变动，服务器将每15分钟查询一次成绩\n" +
+        public const string Usage = "欢迎使用机器人，它可以：\n" +
+                                    "\n/once - 通过浙大钉API查询一次成绩\n" +
+                                    "/sub - 订阅成绩变动，服务器将每5分钟查询一次成绩\n" +
                                     "/unsub - 取消订阅\n" +
                                     "\n机器人可通过两种方式登录教务网：\n" +
                                     "1. 学号 + 统一身份认证密码\n" +
                                     "2. Cookies\n" +
-                                    "\n一次查询模式下，机器人不会记录任何数据。订阅模式下，机器人不会记录您的学号和密码，但是会记录Cookies，以供定时查询。当Cookie失效时，机器人将通知您。";
-
-        public const string VerifyMethodUsage = "请选择身份验证方式：\n" +
+                                    "\n一次查询模式下，机器人不会记录任何数据。订阅模式下，机器人不会记录您的学号和密码，但是会记录Cookies，以便定时查询。当Cookie失效时，机器人将通知您。";
+        public const string VerifyMethodSelect = "请选择身份验证方式：\n" +
                                                 "/zjuam 统一身份认证账号和密码\n" +
                                                 "/cookie 名为iPlanetDirectoryPro的Cookie";
 
         public const string EnterUsername = "好的，请输入您的学号：";
         public const string EnterPassword = "收到，请继续输入统一身份认证密码：";
-
         public const string EnterCookie = "好的，请输入您的Cookie，其开头包含：" +
                                           "\"iPlanetDirectoryPro=\"，内容不含空格，并以分号结尾：";
 
         public const string Querying = "收到，正在尝试获取成绩……";
         public const string SubscribeQuerying = "您已有订阅，正在尝试获取成绩……";
-        public const string QuerySuccess = "统一身份认证成功，您的成绩为：\n";
+        public const string QuerySuccess = "认证成功，您的成绩为：\n";
         public const string QueryFail = "获取成绩失败，错误信息：\n";
-        public const string SubSuccess = "订阅成功，您将在成绩有变动时收到通知。此外，您还可以通过 /once 来主动获取成绩。";
+        public const string SubscribeSuccess = "订阅成功，您将在成绩变动时收到通知。\n此外，您还可以通过 /once 来主动获取成绩。";
     }
 }
