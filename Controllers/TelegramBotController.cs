@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using OhMyGPA.Bot.Logics;
-using OhMyGPA.Bot.Models;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 

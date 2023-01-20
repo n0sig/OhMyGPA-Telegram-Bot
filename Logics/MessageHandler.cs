@@ -1,4 +1,5 @@
 using OhMyGPA.Bot.Models;
+using OhMyGPA.Bot.Models.Interfaces;
 using ZjuApi;
 
 namespace OhMyGPA.Bot.Logics;

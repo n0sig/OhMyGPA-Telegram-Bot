@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
-using OhMyGPA.Bot.Models;
+using OhMyGPA.Bot.Models.Implements;
+using OhMyGPA.Bot.Models.Interfaces;
 
 namespace OhMyGPA.Bot.Logics;
 
@@ -54,7 +55,7 @@ public class PeriodicalCheck : IHostedService, IDisposable
 
         foreach (var userEncrypted in userList)
         {
-            var user = JsonConvert.DeserializeObject<SubscribeUser>(_aes.Decrypt(userEncrypted.Value));
+            var user = _userManager.DecryptSubscribeUser(userEncrypted.Value);
             if (user == null)
             {
                 toDeleteUsers.Add(userEncrypted.Key);

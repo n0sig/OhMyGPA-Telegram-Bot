@@ -1,17 +1,37 @@
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
+using OhMyGPA.Bot.Models.Interfaces;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 
-namespace OhMyGPA.Bot.Logics;
+namespace OhMyGPA.Bot.Models.Implements;
 
-public class ConfigureWebhook : IHostedService
+public class TelegramBot : IBotClient
+{
+    private readonly ITelegramBotClient _bot;
+    
+    public TelegramBot(ITelegramBotClient botClient)
+    {
+        _bot = botClient;
+    }
+    
+    public async Task SendMessage(long chatId, string text,
+        CancellationToken cancellationToken)
+    {
+        await _bot.SendTextMessageAsync(
+            chatId: chatId,
+            text: text,
+            cancellationToken: cancellationToken);
+    }
+}
+
+public class TelegramBotConfigure : IHostedService
 {
     private readonly BotConfiguration _botConfig;
-    private readonly ILogger<ConfigureWebhook> _logger;
+    private readonly ILogger<TelegramBotConfigure> _logger;
     private readonly IServiceProvider _serviceProvider;
 
-    public ConfigureWebhook(
-        ILogger<ConfigureWebhook> logger,
+    public TelegramBotConfigure(
+        ILogger<TelegramBotConfigure> logger,
         IServiceProvider serviceProvider,
         IOptions<BotConfiguration> botOptions)
     {

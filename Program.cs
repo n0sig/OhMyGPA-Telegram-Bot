@@ -1,7 +1,8 @@
 using Microsoft.Extensions.Options;
 using OhMyGPA.Bot.Controllers;
 using OhMyGPA.Bot.Logics;
-using OhMyGPA.Bot.Models;
+using OhMyGPA.Bot.Models.Interfaces;
+using OhMyGPA.Bot.Models.Implements;
 using StackExchange.Redis;
 using Telegram.Bot;
 
@@ -43,11 +44,11 @@ builder.Services.AddSingleton<IDatabaseAsync>(sp =>
     var redis = ConnectionMultiplexer.Connect(configurationOptions);
     return redis.GetDatabase();
 });
-builder.Services.AddSingleton<IUserManager, UserManager>();
+builder.Services.AddSingleton<IUserManager, UserManagerWithDb>();
 
 // Logics
 builder.Services.AddScoped<MessageHandler>();
-builder.Services.AddHostedService<ConfigureWebhook>();
+builder.Services.AddHostedService<TelegramBotConfigure>();
 builder.Services.AddHostedService<PeriodicalCheck>();
 
 // Build and run!

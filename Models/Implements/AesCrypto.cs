@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
-namespace OhMyGPA.Bot.Models;
+namespace OhMyGPA.Bot.Models.Implements;
 
 public class AesCrypto
 {

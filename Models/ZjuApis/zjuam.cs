@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Numerics;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -50,18 +51,7 @@ public class ZjuAm
                 throw new Exception("获取密钥失败");
             }
 
-            var rsaEncrypt = (string password, string exponent, string modulus) =>
-            {
-                //字符串转换为BigInteger
-                var pwdInt = new BigInteger(Encoding.UTF8.GetBytes(password), isBigEndian: true);
-                var modInt = new BigInteger(Convert.FromHexString(modulus), true, true);
-                var expInt = Convert.ToUInt64(exponent, 16);
-                //由于采用No Padding，直接幂次取余后，转换为Hex即可得到密文（大小写不敏感）
-                var pwdEncInt = BigInteger.ModPow(pwdInt, expInt, modInt);
-                return Convert.ToHexString(pwdEncInt.ToByteArray(true, true));
-            };
-
-            encryptedPassword = rsaEncrypt(password, e, m);
+            encryptedPassword = RsaEncrypt(password, e, m);
         }
 
         //提交登录表单
@@ -76,6 +66,17 @@ public class ZjuAm
                    })))
         {
             if ((await response.Content.ReadAsStringAsync()).Contains("统一身份认证")) throw new Exception("账号或密码错误");
+        }
+        
+        static string RsaEncrypt(string password, string exponent, string modulus)
+        {
+            //字符串转换为BigInteger
+            var pwdInt = new BigInteger(Encoding.UTF8.GetBytes(password), isBigEndian: true);
+            var modInt = new BigInteger(Convert.FromHexString(modulus), true, true);
+            var expInt = Convert.ToUInt64(exponent, 16);
+            //由于采用No Padding，直接幂次取余后，转换为Hex即可得到密文（大小写不敏感）
+            var pwdEncInt = BigInteger.ModPow(pwdInt, expInt, modInt);
+            return Convert.ToHexString(pwdEncInt.ToByteArray(true, true));
         }
     }
 
