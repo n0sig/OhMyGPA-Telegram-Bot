@@ -1,8 +1,8 @@
 ﻿using Newtonsoft.Json;
-using OhMyGPA.Telegram.Bot.Models;
+using OhMyGPA.Bot.Models;
 using Telegram.Bot;
 
-namespace OhMyGPA.Telegram.Bot.Logics;
+namespace OhMyGPA.Bot.Logics;
 
 public class PeriodicalCheck : IHostedService, IDisposable
 {

@@ -3,7 +3,7 @@ using System.Text;
 using Newtonsoft.Json;
 using StackExchange.Redis;
 
-namespace OhMyGPA.Telegram.Bot.Models;
+namespace OhMyGPA.Bot.Models;
 
 public enum CmdType
 {

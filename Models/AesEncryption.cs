@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
-namespace OhMyGPA.Telegram.Bot.Models;
+namespace OhMyGPA.Bot.Models;
 
 public class AesEncryption
 {

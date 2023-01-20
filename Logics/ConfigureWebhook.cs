@@ -2,7 +2,7 @@ using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 
-namespace OhMyGPA.Telegram.Bot.Logics;
+namespace OhMyGPA.Bot.Logics;
 
 public class ConfigureWebhook : IHostedService
 {

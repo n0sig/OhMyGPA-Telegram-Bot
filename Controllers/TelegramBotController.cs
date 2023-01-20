@@ -1,15 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
-using OhMyGPA.Telegram.Bot.Logics;
+using OhMyGPA.Bot.Logics;
 using Telegram.Bot.Types;
 
-namespace OhMyGPA.Telegram.Bot.Controllers;
+namespace OhMyGPA.Bot.Controllers;
 
-public class BotController : ControllerBase
+public class TelegramBotController : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Post(
         [FromBody] Update update,
-        [FromServices] UpdateHandlers handleUpdateService,
+        [FromServices] TelegramMessageHandler handleUpdateService,
         CancellationToken cancellationToken)
     {
         await handleUpdateService.HandleUpdateAsync(update, cancellationToken);

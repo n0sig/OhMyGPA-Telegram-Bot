@@ -1,19 +1,19 @@
-using OhMyGPA.Telegram.Bot.Models;
+using OhMyGPA.Bot.Models;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using ZjuApi;
 
-namespace OhMyGPA.Telegram.Bot.Logics;
+namespace OhMyGPA.Bot.Logics;
 
-public class UpdateHandlers
+public class TelegramMessageHandler
 {
     private readonly ITelegramBotClient _botClient;
-    private readonly ILogger<UpdateHandlers> _logger;
+    private readonly ILogger<TelegramMessageHandler> _logger;
     private readonly BotUser _users;
 
-    public UpdateHandlers(ITelegramBotClient botClient, ILogger<UpdateHandlers> logger, BotUser users)
+    public TelegramMessageHandler(ITelegramBotClient botClient, ILogger<TelegramMessageHandler> logger, BotUser users)
     {
         _botClient = botClient;
         _logger = logger;
@@ -36,7 +36,7 @@ public class UpdateHandlers
         if (message.Text is not { } messageText)
             return;
 
-        // Restore UserInfo from cache
+        // Read dialog user status from database
         var chatId = message.Chat.Id;
         var dialogUser = await _users.GetDialogUser(chatId, cancellationToken);
 

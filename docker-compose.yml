@@ -9,7 +9,7 @@ services:
   nextcloud:
     build:
       context: ./
-    container_name: omg_tgbot
+    container_name: omg_telegram_bot
     restart: always
     depends_on:
       - redis

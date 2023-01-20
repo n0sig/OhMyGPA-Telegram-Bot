@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
-using OhMyGPA.Telegram.Bot.Controllers;
-using OhMyGPA.Telegram.Bot.Logics;
-using OhMyGPA.Telegram.Bot.Models;
+using OhMyGPA.Bot.Controllers;
+using OhMyGPA.Bot.Logics;
+using OhMyGPA.Bot.Models;
 using StackExchange.Redis;
 using Telegram.Bot;
 
@@ -47,13 +47,13 @@ builder.Services.AddSingleton<AesEncryption>(sp =>
 builder.Services.AddSingleton<BotUser>();
 
 // Logics
-builder.Services.AddScoped<UpdateHandlers>();
+builder.Services.AddScoped<TelegramMessageHandler>();
 builder.Services.AddHostedService<ConfigureWebhook>();
 builder.Services.AddHostedService<PeriodicalCheck>();
 
 // Build and run!
 var app = builder.Build();
-app.MapBotWebhookRoute<BotController>(botConfiguration.Route);
+app.MapBotWebhookRoute<TelegramBotController>(botConfiguration.Route);
 app.MapControllers();
 app.Run();
 
