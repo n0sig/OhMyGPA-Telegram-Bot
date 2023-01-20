@@ -3,12 +3,12 @@ using System.Text;
 
 namespace OhMyGPA.Bot.Models;
 
-public class AesEncryption
+public class AesCrypto
 {
     private readonly ICryptoTransform _decryptor;
     private readonly ICryptoTransform _encryptor;
 
-    public AesEncryption(string key, string iv)
+    public AesCrypto(string key, string iv)
     {
         var aes = Aes.Create();
         aes.Key = Encoding.UTF8.GetBytes(key);

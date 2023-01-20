@@ -7,7 +7,16 @@ using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Telegram Bot
+// AES Encryption
+var cryptoConfigurationSection = builder.Configuration.GetSection(EncryptionConfiguration.Configuration);
+builder.Services.Configure<EncryptionConfiguration>(cryptoConfigurationSection);
+builder.Services.AddSingleton<AesCrypto>(sp =>
+{
+    var cryptoConfig = sp.GetConfiguration<EncryptionConfiguration>();
+    return new AesCrypto(cryptoConfig.Key, cryptoConfig.IV);
+});
+
+// Telegram Bot Client
 var botConfigurationSection = builder.Configuration.GetSection(BotConfiguration.Configuration);
 builder.Services.Configure<BotConfiguration>(botConfigurationSection);
 var botConfiguration = botConfigurationSection.Get<BotConfiguration>();
@@ -19,8 +28,9 @@ builder.Services.AddHttpClient("telegram_bot_client")
         return new TelegramBotClient(options, httpClient);
     });
 builder.Services.AddControllers().AddNewtonsoftJson();
+builder.Services.AddSingleton<IBotClient, TelegramBot>();
 
-// Redis
+// User Management and Database
 var redisConfigurationSection = builder.Configuration.GetSection(RedisConfiguration.Configuration);
 builder.Services.Configure<RedisConfiguration>(redisConfigurationSection);
 builder.Services.AddSingleton<IDatabaseAsync>(sp =>
@@ -33,21 +43,10 @@ builder.Services.AddSingleton<IDatabaseAsync>(sp =>
     var redis = ConnectionMultiplexer.Connect(configurationOptions);
     return redis.GetDatabase();
 });
-
-// AES Encryption
-var cryptoConfigurationSection = builder.Configuration.GetSection(EncryptionConfiguration.Configuration);
-builder.Services.Configure<EncryptionConfiguration>(cryptoConfigurationSection);
-builder.Services.AddSingleton<AesEncryption>(sp =>
-{
-    var cryptoConfig = sp.GetConfiguration<EncryptionConfiguration>();
-    return new AesEncryption(cryptoConfig.Key, cryptoConfig.IV);
-});
-
-// User Management
-builder.Services.AddSingleton<BotUser>();
+builder.Services.AddSingleton<IUserManager, UserManager>();
 
 // Logics
-builder.Services.AddScoped<TelegramMessageHandler>();
+builder.Services.AddScoped<MessageHandler>();
 builder.Services.AddHostedService<ConfigureWebhook>();
 builder.Services.AddHostedService<PeriodicalCheck>();
 

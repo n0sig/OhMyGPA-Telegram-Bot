@@ -1,120 +1,104 @@
 using OhMyGPA.Bot.Models;
-using Telegram.Bot;
-using Telegram.Bot.Exceptions;
-using Telegram.Bot.Types;
-using Telegram.Bot.Types.ReplyMarkups;
 using ZjuApi;
 
 namespace OhMyGPA.Bot.Logics;
 
-public class TelegramMessageHandler
+public class MessageHandler
 {
-    private readonly ITelegramBotClient _botClient;
-    private readonly ILogger<TelegramMessageHandler> _logger;
-    private readonly BotUser _users;
+    private readonly IBotClient _botClient;
+    private readonly IUserManager _userManager;
+    private readonly ILogger<MessageHandler> _logger;
 
-    public TelegramMessageHandler(ITelegramBotClient botClient, ILogger<TelegramMessageHandler> logger, BotUser users)
+    public MessageHandler(IBotClient botClient, IUserManager userManager, ILogger<MessageHandler> logger)
     {
         _botClient = botClient;
+        _userManager = userManager;
         _logger = logger;
-        _users = users;
     }
-
-    public async Task HandleUpdateAsync(Update update, CancellationToken cancellationToken)
+    
+    public async Task BotOnMessageReceived(long chatId, string? messageText, CancellationToken cancellationToken)
     {
-        var handler = update switch
-        {
-            { Message: { } message } => BotOnMessageReceived(message, cancellationToken),
-            _ => UnknownUpdateHandlerAsync(update, cancellationToken)
-        };
-        await handler;
-    }
-
-    private async Task BotOnMessageReceived(Message message, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Receive message type: {MessageType}", message.Type);
-        if (message.Text is not { } messageText)
-            return;
+        _logger.LogInformation("Receive text message from: {ChatId}", chatId);
+        if (messageText == null) return;
 
         // Read dialog user status from database
-        var chatId = message.Chat.Id;
-        var dialogUser = await _users.GetDialogUser(chatId, cancellationToken);
+        var dialogUser = await _userManager.GetDialogUser(chatId, cancellationToken);
 
         switch (Cmd: dialogUser.CmdType, Msg: dialogUser.RcvMsgType, messageText)
         {
             case (CmdType.None, _, "/once"):
             {
-                if (_users.IsSubscribeUser(chatId, cancellationToken))
+                if (_userManager.IsSubscribeUser(chatId, cancellationToken))
                 {
-                    var subscribeUser = _users.GetSubscribeUser(chatId, cancellationToken);
-                    await SendMessage(_botClient, message, cancellationToken, Reply.SubscribeQuerying);
+                    var subscribeUser = _userManager.GetSubscribeUser(chatId, cancellationToken);
+                    await _botClient.SendMessage(chatId, Reply.SubscribeQuerying, cancellationToken);
                     try
                     {
                         var transcript = await Cjcx.GetTranscript(subscribeUser.Cookie);
-                        await SendMessage(_botClient, message, cancellationToken, Reply.QuerySuccess + transcript);
+                        await _botClient.SendMessage(chatId, Reply.QuerySuccess + transcript, cancellationToken);
                         subscribeUser.LastQueryCourseCount = transcript.CourseCount;
-                        await _users.AddSubscribeUser(chatId, subscribeUser, cancellationToken);
+                        await _userManager.AddSubscribeUser(chatId, subscribeUser, cancellationToken);
                     }
                     catch (Exception e)
                     {
-                        await SendMessage(_botClient, message, cancellationToken, Reply.QueryFail + e.Message);
+                        await _botClient.SendMessage(chatId, Reply.QueryFail + e.Message, cancellationToken);
                     }
 
-                    await _users.RemoveDialogUser(chatId, cancellationToken);
+                    await _userManager.RemoveDialogUser(chatId, cancellationToken);
                 }
                 else
                 {
-                    await SendMessage(_botClient, message, cancellationToken, Reply.VerifyMethodSelect);
+                    await _botClient.SendMessage(chatId, Reply.VerifyMethodSelect, cancellationToken);
                     dialogUser.CmdType = CmdType.Query;
                     dialogUser.RcvMsgType = RcvMsgType.Normal;
-                    await _users.SaveDialogUser(chatId, dialogUser, cancellationToken);
+                    await _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
                 }
 
                 break;
             }
             case (CmdType.None, _, "/sub"):
             {
-                await SendMessage(_botClient, message, cancellationToken, Reply.VerifyMethodSelect);
+                await _botClient.SendMessage(chatId, Reply.VerifyMethodSelect, cancellationToken);
                 dialogUser.CmdType = CmdType.Subscribe;
                 dialogUser.RcvMsgType = RcvMsgType.Normal;
-                await _users.SaveDialogUser(chatId, dialogUser, cancellationToken);
+                await _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
                 break;
             }
             case (CmdType.None, _, "/unsub"):
             {
-                await SendMessage(_botClient, message, cancellationToken, "正在取消订阅……");
-                if (await _users.RemoveSubscribeUser(chatId, cancellationToken))
-                    await SendMessage(_botClient, message, cancellationToken, "取消订阅成功");
+                await _botClient.SendMessage(chatId, "正在取消订阅……", cancellationToken);
+                if (await _userManager.RemoveSubscribeUser(chatId, cancellationToken))
+                    await _botClient.SendMessage(chatId, "取消订阅成功", cancellationToken);
                 else
-                    await SendMessage(_botClient, message, cancellationToken, "您似乎没有订阅");
-                await _users.RemoveDialogUser(chatId, cancellationToken);
+                    await _botClient.SendMessage(chatId, "您似乎没有订阅", cancellationToken);
+                await _userManager.RemoveDialogUser(chatId, cancellationToken);
                 break;
             }
             case (CmdType.Query or CmdType.Subscribe, RcvMsgType.Normal, "/zjuam"):
             {
-                await SendMessage(_botClient, message, cancellationToken, Reply.EnterUsername);
+                await _botClient.SendMessage(chatId, Reply.EnterUsername, cancellationToken);
                 dialogUser.RcvMsgType = RcvMsgType.Username;
-                await _users.SaveDialogUser(chatId, dialogUser, cancellationToken);
+                await _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
                 break;
             }
             case (CmdType.Query or CmdType.Subscribe, RcvMsgType.Normal, "/cookie"):
             {
-                await SendMessage(_botClient, message, cancellationToken, Reply.EnterCookie);
+                await _botClient.SendMessage(chatId, Reply.EnterCookie, cancellationToken);
                 dialogUser.RcvMsgType = RcvMsgType.Cookie;
-                await _users.SaveDialogUser(chatId, dialogUser, cancellationToken);
+                await _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
                 break;
             }
             case (CmdType.Query or CmdType.Subscribe, RcvMsgType.Username, _):
             {
-                await SendMessage(_botClient, message, cancellationToken, Reply.EnterPassword);
+                await _botClient.SendMessage(chatId, Reply.EnterPassword, cancellationToken);
                 dialogUser.CachedUsername = messageText;
                 dialogUser.RcvMsgType = RcvMsgType.Password;
-                await _users.SaveDialogUser(chatId, dialogUser, cancellationToken);
+                await _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
                 break;
             }
             case (CmdType.Query or CmdType.Subscribe, RcvMsgType.Password or RcvMsgType.Cookie, _):
             {
-                await SendMessage(_botClient, message, cancellationToken, Reply.Querying);
+                await _botClient.SendMessage(chatId, Reply.Querying, cancellationToken);
                 try
                 {
                     string cookie;
@@ -129,45 +113,34 @@ public class TelegramMessageHandler
                     }
                     
                     var transcript = await Cjcx.GetTranscript(cookie);
-                    await SendMessage(_botClient, message, cancellationToken, Reply.QuerySuccess + transcript);
+                    await _botClient.SendMessage(chatId, Reply.QuerySuccess + transcript, cancellationToken);
                     if (dialogUser.CmdType == CmdType.Subscribe)
                     {
-                        await _users.AddSubscribeUser(chatId, new BotUser.SubscribeUser
+                        await _userManager.AddSubscribeUser(chatId, new SubscribeUser
                         {
-                            ChatId = message.Chat.Id,
+                            ChatId = chatId,
                             Cookie = cookie,
                             LastQueryCourseCount = transcript.CourseCount
                         }, cancellationToken);
-                        await SendMessage(_botClient, message, cancellationToken, Reply.SubscribeSuccess);
+                        await _botClient.SendMessage(chatId, Reply.SubscribeSuccess, cancellationToken);
                     }
                 }
                 catch (Exception e)
                 {
-                    await SendMessage(_botClient, message, cancellationToken, Reply.QueryFail + e.Message);
+                    await _botClient.SendMessage(chatId, Reply.QueryFail + e.Message, cancellationToken);
                 }
 
-                await _users.RemoveDialogUser(chatId, cancellationToken);
+                await _userManager.RemoveDialogUser(chatId, cancellationToken);
                 break;
             }
             default:
             {
-                await SendMessage(_botClient, message, cancellationToken, Reply.Usage);
-                await _users.RemoveDialogUser(chatId, cancellationToken);
+                await _botClient.SendMessage(chatId, Reply.Usage, cancellationToken);
+                await _userManager.RemoveDialogUser(chatId, cancellationToken);
                 break;
             }
         }
-
-        static async Task<Message> SendMessage(ITelegramBotClient botClient, Message message,
-            CancellationToken cancellationToken, string text)
-        {
-            return await botClient.SendTextMessageAsync(
-                message.Chat.Id,
-                text,
-                disableNotification: false,
-                replyMarkup: new ReplyKeyboardRemove(),
-                cancellationToken: cancellationToken);
-        }
-
+        
         static string TrimCookie(string cookie)
         {
             cookie = cookie.Trim();
@@ -177,23 +150,10 @@ public class TelegramMessageHandler
             return cookie;
         }
     }
-
-    private Task UnknownUpdateHandlerAsync(Update update, CancellationToken cancellationToken)
+    
+    public Task UnknownUpdateHandlerAsync(string type, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Unknown update type: {UpdateType}", update.Type);
-        return Task.CompletedTask;
-    }
-
-    public Task HandleErrorAsync(Exception exception, CancellationToken cancellationToken)
-    {
-        var errorMessage = exception switch
-        {
-            ApiRequestException apiRequestException =>
-                $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
-            _ => exception.ToString()
-        };
-
-        _logger.LogInformation("HandleError: {ErrorMessage}", errorMessage);
+        _logger.LogInformation("Unknown update type {}", type);
         return Task.CompletedTask;
     }
 

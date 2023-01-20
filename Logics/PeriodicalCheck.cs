@@ -1,22 +1,21 @@
 ﻿using Newtonsoft.Json;
 using OhMyGPA.Bot.Models;
-using Telegram.Bot;
 
 namespace OhMyGPA.Bot.Logics;
 
 public class PeriodicalCheck : IHostedService, IDisposable
 {
-    private readonly AesEncryption _aes;
-    private readonly ITelegramBotClient _botClient;
+    private readonly AesCrypto _aes;
+    private readonly IBotClient _botClient;
     private readonly ILogger<PeriodicalCheck> _logger;
-    private readonly BotUser _users;
+    private readonly IUserManager _userManager;
     private CancellationToken _cancellationToken;
     private Timer? _timer;
 
-    public PeriodicalCheck(ILogger<PeriodicalCheck> logger, BotUser users, AesEncryption aes, ITelegramBotClient botClient)
+    public PeriodicalCheck(ILogger<PeriodicalCheck> logger, IUserManager userManager, AesCrypto aes, IBotClient botClient)
     {
         _logger = logger;
-        _users = users;
+        _userManager = userManager;
         _aes = aes;
         _botClient = botClient;
     }
@@ -28,18 +27,18 @@ public class PeriodicalCheck : IHostedService, IDisposable
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Periodical check service started");
         _cancellationToken = cancellationToken;
         _timer = new Timer(DoCheck, null, TimeSpan.Zero,
             TimeSpan.FromMinutes(5));
+        _logger.LogInformation("Periodical check service has started");
         return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Periodical check service is stopping");
         _cancellationToken = cancellationToken;
         _timer?.Change(Timeout.Infinite, 0);
+        _logger.LogInformation("Periodical check service has started");
         return Task.CompletedTask;
     }
 
@@ -51,17 +50,16 @@ public class PeriodicalCheck : IHostedService, IDisposable
         var toUpdateUsers = new Dictionary<string, byte[]>();
         var toDeleteUsers = new List<string>();
 
-        var userList = _users.GetAllSubscribeUsers(_cancellationToken);
+        var userList = _userManager.GetAllSubscribeUsers(_cancellationToken);
 
         foreach (var userEncrypted in userList)
         {
-            var user = JsonConvert.DeserializeObject<BotUser.SubscribeUser>(_aes.Decrypt(userEncrypted.Value));
+            var user = JsonConvert.DeserializeObject<SubscribeUser>(_aes.Decrypt(userEncrypted.Value));
             if (user == null)
             {
                 toDeleteUsers.Add(userEncrypted.Key);
                 continue;
             }
-
             try
             {
                 var transcript = await ZjuApi.Cjcx.GetTranscript(user.Cookie);
@@ -69,7 +67,7 @@ public class PeriodicalCheck : IHostedService, IDisposable
                 {
                     user.LastQueryCourseCount = transcript.CourseCount;
                     toUpdateUsers.Add(userEncrypted.Key, _aes.Encrypt(JsonConvert.SerializeObject(user)));
-                    await _botClient.SendTextMessageAsync(
+                    await _botClient.SendMessage(
                         user.ChatId,
                         "成绩变动通知：\n" + transcript,
                         cancellationToken: _cancellationToken);
@@ -79,16 +77,16 @@ public class PeriodicalCheck : IHostedService, IDisposable
             {
                 _logger.LogWarning(e, "Error when checking user {0}", user.ChatId);
                 toDeleteUsers.Add(userEncrypted.Key);
-                await _botClient.SendTextMessageAsync(
+                await _botClient.SendMessage(
                     user.ChatId,
                     "查询失败，已为您取消订阅\n错误信息：\n" + e.Message,
                     cancellationToken: _cancellationToken);
             }
         }
 
-        foreach (var user in toUpdateUsers) await _users.UpdateSubscribeUser(user.Key, user.Value, _cancellationToken);
+        foreach (var user in toUpdateUsers) await _userManager.UpdateSubscribeUser(user.Key, user.Value, _cancellationToken);
 
-        foreach (var user in toDeleteUsers) await _users.RemoveSubscribeUser(user, _cancellationToken);
+        foreach (var user in toDeleteUsers) await _userManager.RemoveSubscribeUser(user, _cancellationToken);
 
         _logger.LogInformation("Periodical check completed");
     }
