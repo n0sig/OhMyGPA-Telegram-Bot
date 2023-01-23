@@ -1,23 +1,19 @@
-﻿using Newtonsoft.Json;
-using OhMyGPA.Bot.Models.Implements;
-using OhMyGPA.Bot.Models.Interfaces;
+﻿using OhMyGPA.Bot.Models;
 
 namespace OhMyGPA.Bot.Logics;
 
 public class PeriodicalCheck : IHostedService, IDisposable
 {
-    private readonly AesCrypto _aes;
     private readonly IBotClient _botClient;
     private readonly ILogger<PeriodicalCheck> _logger;
     private readonly IUserManager _userManager;
     private CancellationToken _cancellationToken;
     private Timer? _timer;
 
-    public PeriodicalCheck(ILogger<PeriodicalCheck> logger, IUserManager userManager, AesCrypto aes, IBotClient botClient)
+    public PeriodicalCheck(ILogger<PeriodicalCheck> logger, IUserManager userManager, IBotClient botClient)
     {
         _logger = logger;
         _userManager = userManager;
-        _aes = aes;
         _botClient = botClient;
     }
 
@@ -26,21 +22,21 @@ public class PeriodicalCheck : IHostedService, IDisposable
         _timer?.Dispose();
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         _cancellationToken = cancellationToken;
+        await _userManager.LoadAllSubscribeUsers();
         _timer = new Timer(DoCheck, null, TimeSpan.Zero,
-            TimeSpan.FromMinutes(5));
+            TimeSpan.FromMinutes(2));
         _logger.LogInformation("Periodical check service has started");
-        return Task.CompletedTask;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
         _cancellationToken = cancellationToken;
         _timer?.Change(Timeout.Infinite, 0);
-        _logger.LogInformation("Periodical check service has started");
-        return Task.CompletedTask;
+        await _userManager.SaveAllSubscribeUsers();
+        _logger.LogInformation("Periodical check service has stopped");
     }
 
     private async void DoCheck(object? state)
@@ -48,27 +44,26 @@ public class PeriodicalCheck : IHostedService, IDisposable
         _logger.LogInformation(
             "Doing periodical check");
 
-        var toUpdateUsers = new Dictionary<string, byte[]>();
-        var toDeleteUsers = new List<string>();
-
         var userList = _userManager.GetAllSubscribeUsers(_cancellationToken);
 
-        foreach (var userEncrypted in userList)
+        Parallel.ForEach(userList, userEncrypted =>
         {
-            var user = _userManager.DecryptSubscribeUser(userEncrypted.Value);
+            _logger.LogError("Checking user {ChatIdHash}", userEncrypted.Key);
+            var user = _userManager.DecryptSubscribeUser(userEncrypted.Value, _cancellationToken);
             if (user == null)
             {
-                toDeleteUsers.Add(userEncrypted.Key);
-                continue;
+                _userManager.CompareRemoveSubscribeUser(userEncrypted, _cancellationToken);
+                return;
             }
+            
             try
             {
-                var transcript = await ZjuApi.Cjcx.GetTranscript(user.Cookie);
-                if (transcript.CourseCount != user.LastQueryCourseCount)
+                var transcript = ZjuApi.Cjcx.GetTranscript(user.Cookie).Result;
+                if (transcript.CourseCount == user.LastQueryCourseCount) return;
+                user.LastQueryCourseCount = transcript.CourseCount;
+                if (_userManager.CompareAddSubscribeUser(userEncrypted, user, _cancellationToken))
                 {
-                    user.LastQueryCourseCount = transcript.CourseCount;
-                    toUpdateUsers.Add(userEncrypted.Key, _aes.Encrypt(JsonConvert.SerializeObject(user)));
-                    await _botClient.SendMessage(
+                    _botClient.SendMessage(
                         user.ChatId,
                         "成绩变动通知：\n" + transcript,
                         cancellationToken: _cancellationToken);
@@ -76,18 +71,18 @@ public class PeriodicalCheck : IHostedService, IDisposable
             }
             catch (Exception e)
             {
-                _logger.LogWarning(e, "Error when checking user {0}", user.ChatId);
-                toDeleteUsers.Add(userEncrypted.Key);
-                await _botClient.SendMessage(
-                    user.ChatId,
-                    "查询失败，已为您取消订阅\n错误信息：\n" + e.Message,
-                    cancellationToken: _cancellationToken);
+                _logger.LogWarning(e, "Error when checking user {ChatId}", user.ChatId);
+                if (_userManager.CompareRemoveSubscribeUser(userEncrypted, _cancellationToken))
+                {
+                    _botClient.SendMessage(
+                        user.ChatId,
+                        "查询失败，可能是Cookie过期，已为您取消订阅",
+                        cancellationToken: _cancellationToken);
+                }
             }
-        }
+        });
 
-        foreach (var user in toUpdateUsers) await _userManager.UpdateSubscribeUser(user.Key, user.Value, _cancellationToken);
-
-        foreach (var user in toDeleteUsers) await _userManager.RemoveSubscribeUser(user, _cancellationToken);
+        await _userManager.SaveAllSubscribeUsers();
 
         _logger.LogInformation("Periodical check completed");
     }

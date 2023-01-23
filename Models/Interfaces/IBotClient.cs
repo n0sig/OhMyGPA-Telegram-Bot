@@ -1,4 +1,4 @@
-﻿namespace OhMyGPA.Bot.Models.Interfaces;
+﻿namespace OhMyGPA.Bot.Models;
 
 public interface IBotClient
 {

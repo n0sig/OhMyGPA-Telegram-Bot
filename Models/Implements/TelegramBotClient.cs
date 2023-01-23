@@ -1,9 +1,8 @@
 ﻿using Microsoft.Extensions.Options;
-using OhMyGPA.Bot.Models.Interfaces;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 
-namespace OhMyGPA.Bot.Models.Implements;
+namespace OhMyGPA.Bot.Models;
 
 public class TelegramBot : IBotClient
 {
@@ -55,6 +54,7 @@ public class TelegramBotConfigure : IHostedService
         await botClient.SetWebhookAsync(
             webhookAddress,
             allowedUpdates: Array.Empty<UpdateType>(),
+            maxConnections: 60,
             cancellationToken: cancellationToken);
     }
 

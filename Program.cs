@@ -1,9 +1,7 @@
 using Microsoft.Extensions.Options;
 using OhMyGPA.Bot.Controllers;
 using OhMyGPA.Bot.Logics;
-using OhMyGPA.Bot.Models.Interfaces;
-using OhMyGPA.Bot.Models.Implements;
-using StackExchange.Redis;
+using OhMyGPA.Bot.Models;
 using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,25 +28,13 @@ builder.Services.AddHttpClient("telegram_bot_client")
     });
 builder.Services.AddControllers().AddNewtonsoftJson();
 builder.Services.AddSingleton<IBotClient, TelegramBot>();
+builder.Services.AddHostedService<TelegramBotConfigure>();
 
-// User Management and Database
-var redisConfigurationSection = builder.Configuration.GetSection(RedisConfiguration.Configuration);
-builder.Services.Configure<RedisConfiguration>(redisConfigurationSection);
-builder.Services.AddSingleton<IDatabaseAsync>(sp =>
-{
-    var redisConfig = sp.GetConfiguration<RedisConfiguration>();
-    var configurationOptions = new ConfigurationOptions();
-    configurationOptions.EndPoints.Add(redisConfig.Host, redisConfig.Port);
-    configurationOptions.Password = redisConfig.Password;
-    configurationOptions.DefaultDatabase = redisConfig.DefaultDatabase;
-    var redis = ConnectionMultiplexer.Connect(configurationOptions);
-    return redis.GetDatabase();
-});
-builder.Services.AddSingleton<IUserManager, UserManagerWithDb>();
+// User Management
+builder.Services.AddSingleton<IUserManager, UserManager>();
 
 // Logics
 builder.Services.AddScoped<MessageHandler>();
-builder.Services.AddHostedService<TelegramBotConfigure>();
 builder.Services.AddHostedService<PeriodicalCheck>();
 
 // Build and run!
@@ -65,15 +51,6 @@ public class BotConfiguration
     public string BotToken { get; init; } = default!;
     public string HostAddress { get; init; } = default!;
     public string Route { get; init; } = default!;
-}
-
-public class RedisConfiguration
-{
-    public static readonly string Configuration = "Redis";
-    public string Host { get; init; } = default!;
-    public int Port { get; init; }
-    public string? Password { get; init; }
-    public int DefaultDatabase { get; init; }
 }
 
 public class EncryptionConfiguration

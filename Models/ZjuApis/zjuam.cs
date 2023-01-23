@@ -61,8 +61,7 @@ public class ZjuAm
                        { "username", username },
                        { "password", encryptedPassword },
                        { "execution", execution },
-                       { "_eventId", "submit" },
-                       { "rememberMe", "true" }
+                       { "_eventId", "submit" }
                    })))
         {
             if ((await response.Content.ReadAsStringAsync()).Contains("统一身份认证")) throw new Exception("账号或密码错误");

@@ -1,5 +1,4 @@
 using OhMyGPA.Bot.Models;
-using OhMyGPA.Bot.Models.Interfaces;
 using ZjuApi;
 
 namespace OhMyGPA.Bot.Logics;
@@ -23,38 +22,38 @@ public class MessageHandler
         if (messageText == null) return;
 
         // Read dialog user status from database
-        var dialogUser = await _userManager.GetDialogUser(chatId, cancellationToken);
+        var dialogUser = _userManager.GetDialogUser(chatId, cancellationToken);
 
         switch (Cmd: dialogUser.CmdType, Msg: dialogUser.RcvMsgType, messageText)
         {
             case (CmdType.None, _, "/once"):
             {
-                if (_userManager.IsSubscribeUser(chatId, cancellationToken))
+                var subscribeUser = _userManager.GetSubscribeUser(chatId, cancellationToken);
+                if (subscribeUser == null)
                 {
-                    var subscribeUser = _userManager.GetSubscribeUser(chatId, cancellationToken);
+                    await _botClient.SendMessage(chatId, Reply.VerifyMethodSelect, cancellationToken);
+                    dialogUser.CmdType = CmdType.Query;
+                    dialogUser.RcvMsgType = RcvMsgType.Normal;
+                    _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
+                }
+                else
+                {
                     await _botClient.SendMessage(chatId, Reply.SubscribeQuerying, cancellationToken);
                     try
                     {
                         var transcript = await Cjcx.GetTranscript(subscribeUser.Cookie);
-                        await _botClient.SendMessage(chatId, Reply.QuerySuccess + transcript, cancellationToken);
                         subscribeUser.LastQueryCourseCount = transcript.CourseCount;
-                        await _userManager.AddSubscribeUser(chatId, subscribeUser, cancellationToken);
+                        if (_userManager.AddSubscribeUser(chatId, subscribeUser, cancellationToken))
+                            await _botClient.SendMessage(chatId, Reply.QuerySuccess + transcript, cancellationToken);
+                        else throw new Exception("程序内部错误，数据异常");
                     }
                     catch (Exception e)
                     {
                         await _botClient.SendMessage(chatId, Reply.QueryFail + e.Message, cancellationToken);
                     }
 
-                    await _userManager.RemoveDialogUser(chatId, cancellationToken);
+                    _userManager.RemoveDialogUser(chatId, cancellationToken);
                 }
-                else
-                {
-                    await _botClient.SendMessage(chatId, Reply.VerifyMethodSelect, cancellationToken);
-                    dialogUser.CmdType = CmdType.Query;
-                    dialogUser.RcvMsgType = RcvMsgType.Normal;
-                    await _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
-                }
-
                 break;
             }
             case (CmdType.None, _, "/sub"):
@@ -62,31 +61,31 @@ public class MessageHandler
                 await _botClient.SendMessage(chatId, Reply.VerifyMethodSelect, cancellationToken);
                 dialogUser.CmdType = CmdType.Subscribe;
                 dialogUser.RcvMsgType = RcvMsgType.Normal;
-                await _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
+                _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
                 break;
             }
             case (CmdType.None, _, "/unsub"):
             {
                 await _botClient.SendMessage(chatId, "正在取消订阅……", cancellationToken);
-                if (await _userManager.RemoveSubscribeUser(chatId, cancellationToken))
+                if (_userManager.RemoveSubscribeUser(chatId, cancellationToken))
                     await _botClient.SendMessage(chatId, "取消订阅成功", cancellationToken);
                 else
                     await _botClient.SendMessage(chatId, "您似乎没有订阅", cancellationToken);
-                await _userManager.RemoveDialogUser(chatId, cancellationToken);
+                _userManager.RemoveDialogUser(chatId, cancellationToken);
                 break;
             }
             case (CmdType.Query or CmdType.Subscribe, RcvMsgType.Normal, "/zjuam"):
             {
                 await _botClient.SendMessage(chatId, Reply.EnterUsername, cancellationToken);
                 dialogUser.RcvMsgType = RcvMsgType.Username;
-                await _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
+                _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
                 break;
             }
             case (CmdType.Query or CmdType.Subscribe, RcvMsgType.Normal, "/cookie"):
             {
                 await _botClient.SendMessage(chatId, Reply.EnterCookie, cancellationToken);
                 dialogUser.RcvMsgType = RcvMsgType.Cookie;
-                await _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
+                _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
                 break;
             }
             case (CmdType.Query or CmdType.Subscribe, RcvMsgType.Username, _):
@@ -94,7 +93,7 @@ public class MessageHandler
                 await _botClient.SendMessage(chatId, Reply.EnterPassword, cancellationToken);
                 dialogUser.CachedUsername = messageText;
                 dialogUser.RcvMsgType = RcvMsgType.Password;
-                await _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
+                _userManager.SaveDialogUser(chatId, dialogUser, cancellationToken);
                 break;
             }
             case (CmdType.Query or CmdType.Subscribe, RcvMsgType.Password or RcvMsgType.Cookie, _):
@@ -117,13 +116,15 @@ public class MessageHandler
                     await _botClient.SendMessage(chatId, Reply.QuerySuccess + transcript, cancellationToken);
                     if (dialogUser.CmdType == CmdType.Subscribe)
                     {
-                        await _userManager.AddSubscribeUser(chatId, new SubscribeUser
+                        if(_userManager.AddSubscribeUser(chatId, new SubscribeUser
                         {
                             ChatId = chatId,
                             Cookie = cookie,
                             LastQueryCourseCount = transcript.CourseCount
-                        }, cancellationToken);
-                        await _botClient.SendMessage(chatId, Reply.SubscribeSuccess, cancellationToken);
+                        }, cancellationToken))
+                            await _botClient.SendMessage(chatId, Reply.SubscribeSuccess, cancellationToken);
+                        else
+                            await _botClient.SendMessage(chatId, Reply.SubscribeFail, cancellationToken);
                     }
                 }
                 catch (Exception e)
@@ -131,13 +132,13 @@ public class MessageHandler
                     await _botClient.SendMessage(chatId, Reply.QueryFail + e.Message, cancellationToken);
                 }
 
-                await _userManager.RemoveDialogUser(chatId, cancellationToken);
+                _userManager.RemoveDialogUser(chatId, cancellationToken);
                 break;
             }
             default:
             {
                 await _botClient.SendMessage(chatId, Reply.Usage, cancellationToken);
-                await _userManager.RemoveDialogUser(chatId, cancellationToken);
+                _userManager.RemoveDialogUser(chatId, cancellationToken);
                 break;
             }
         }
@@ -182,5 +183,6 @@ public class MessageHandler
         public const string QuerySuccess = "认证成功，您的成绩为：\n";
         public const string QueryFail = "获取成绩失败，错误信息：\n";
         public const string SubscribeSuccess = "订阅成功，您将在成绩变动时收到通知。\n此外，您还可以通过 /once 来主动获取成绩。";
+        public const string SubscribeFail = "订阅失败，可能是数据库故障。";
     }
 }
